@@ -92,10 +92,11 @@ void setGenericCommand(client *c, int flags, robj *key, robj *val, robj *expire,
 
         /* Copy value from RAM to PM - create RedisObject and sds(value) */
         TX_BEGIN(server.pm_pool) {
-            newVal = dupStringObjectPM(val);
+        	/*TODO 1st alloc for sds value*/
+            /*newVal = dupStringObjectPM(val);*/
             /* Set key in PM - create DictEntry and sds(key) linked to RedisObject with value
              * Don't increment value "ref counter" as in normal process. */
-            setKeyPM(c->db,key,newVal);
+            setKeyPM(c->db,key,val);
         } TX_ONABORT {
             error = 1;
         } TX_END

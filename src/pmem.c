@@ -77,6 +77,7 @@ void pmemKVpairSet(void *key, void *val)
 PMEMoid
 pmemAddToPmemList(void *key, void *val)
 {
+	/*
     PMEMoid key_oid;
     PMEMoid val_oid;
     PMEMoid kv_PM;
@@ -105,7 +106,32 @@ pmemAddToPmemList(void *key, void *val)
 
     root->num_dict_entries++;
 
-    return kv_PM;
+    return kv_PM;*/
+
+    PMEMoid kv_PM;
+    struct redis_pmem_root *root;
+
+    root = pmemobj_direct(server.pm_rootoid.oid);
+    /*new head with link to next*/
+    TOID(struct key_val_pair_PM) *head = &(root->pe_first);
+	int result = POBJ_NEW(server.pm_pool, head, struct key_val_pair_PM, listEntryConstruct, head);
+	printf("Result: %d\n", result);
+	/*update prev in next*/
+    if(!TOID_IS_NULL(D_RO(root->pe_first)->pmem_list_next)) {
+    	D_RW(D_RW(root->pe_first)->pmem_list_next)->pmem_list_prev = root->pe_first;
+    }
+    /*struct key_val_pair_PM head* = D_RW(root->pe_first);*/
+ 	/*TODO alloc value*/
+    result = sdsdupPMAtomic(val,	&((D_RW(*head))->val_oid));
+    printf("Result: %d\n", result);
+    /*pmemobj_alloc(server.pm_pool, &((D_RW(root->pe_first))->val_oid), sizeof(PMEMoid), TOID_TYPE_NUM(struct key_val_pair_PM), sdsPMConstruct, val);*/
+    /*TODO alloc key and increase root->num_dict_entries*/
+    result = sdsdupPMAtomic(key,	&((D_RW(*head))->key_oid));
+    printf("Result: %d\n", result);
+
+    root->num_dict_entries++;
+
+	return root->pe_first.oid;
 }
 
 void
@@ -140,5 +166,86 @@ pmemRemoveFromPmemList(PMEMoid kv_PM_oid)
 
     root->num_dict_entries--;
     return;
+}
+
+int
+listEntryConstruct(PMEMobjpool *pop, void *ptr, void *arg)
+{
+	struct key_val_pair_PM *list_entry = ptr;
+
+	list_entry->key_oid = OID_NULL;
+	list_entry->val_oid = OID_NULL;
+	list_entry->pmem_list_next = *(TOID(struct key_val_pair_PM)*)arg;
+	list_entry->pmem_list_prev.oid = OID_NULL;
+
+	pmemobj_persist(pop, list_entry, sizeof *list_entry);
+
+	return 0;
+}
+
+sdsPMConstruct(PMEMobjpool *pop, void *ptr, void *arg)
+{
+	/*TODO copy sds from arg to ptr*/
+
+	sds s;
+	void *sh = ptr;
+	struct args {
+		size_t initlen;
+		const void *init;
+		int hdrlen;
+		char type;
+	} *args = arg;
+	size_t initlen = args->initlen;
+	const void *init = args->init;
+	int hdrlen = args->hdrlen;
+	char type = args->type;
+	unsigned char *fp;
+
+	if (!init)
+		memset(sh, 0, hdrlen+initlen+1);
+	/*if (sh == NULL) return NULL;*/
+	s = (char*)sh+hdrlen;
+	fp = ((unsigned char*)s)-1;
+	switch(type) {
+		case SDS_TYPE_5: {
+			*fp = type | (initlen << SDS_TYPE_BITS);
+	        break;
+	    }
+		case SDS_TYPE_8: {
+			SDS_HDR_VAR(8,s);
+	        sh->len = initlen;
+	        sh->alloc = initlen;
+	        *fp = type;
+	        break;
+	    }
+	    case SDS_TYPE_16: {
+	    	SDS_HDR_VAR(16,s);
+	        sh->len = initlen;
+	        sh->alloc = initlen;
+	        *fp = type;
+	        break;
+	    }
+	    case SDS_TYPE_32: {
+	    	SDS_HDR_VAR(32,s);
+	        sh->len = initlen;
+	        sh->alloc = initlen;
+	        *fp = type;
+	        break;
+	    }
+	    case SDS_TYPE_64: {
+	    	SDS_HDR_VAR(64,s);
+	        sh->len = initlen;
+	        sh->alloc = initlen;
+	        *fp = type;
+	        break;
+	    }
+	}
+	if (initlen && init)
+		memcpy(s, init, initlen);
+	s[initlen] = '\0';
+
+	pmemobj_persist(pop, sh, hdrlen+initlen+1);
+
+	return 0;
 }
 #endif

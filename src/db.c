@@ -179,11 +179,14 @@ void dbAddPM(redisDb *db, robj *key, robj *val) {
     PMEMoid kv_PM;
     PMEMoid *kv_pm_reference;
 
-    sds copy = sdsdupPM(key->ptr, (void **) &kv_pm_reference);
-    int retval = dictAddPM(db->dict, copy, val);
+    /*TODO 2nd alloc for key sds*/
+    /*sds copy = sdsdupPM(key->ptr, (void **) &kv_pm_reference);*/
+    /*int retval = dictAddPM(db->dict, copy, val);*/
+    int retval = dictAddPM(db->dict, key->ptr, val);
 
-    kv_PM = pmemAddToPmemList((void *)copy, (void *)(val->ptr));
-    *kv_pm_reference = kv_PM;
+    /*TODO 3rd alloc for list entry*/
+    /*kv_PM = pmemAddToPmemList((void *)copy, (void *)(val->ptr));
+    *kv_pm_reference = kv_PM; */
 
     serverAssertWithInfo(NULL,key,retval == C_OK);
     if (val->type == OBJ_LIST) signalListAsReady(db, key);
@@ -238,6 +241,11 @@ void setKey(redisDb *db, robj *key, robj *val) {
 /* High level Set operation. Used for PM */
 void setKeyPM(redisDb *db, robj *key, robj *val) {
     if (lookupKeyWrite(db,key) == NULL) {
+    	/*create list entry then allocate key sds and val sds*/
+    	PMEMoid listEntryOid;
+    	listEntryOid = pmemAddToPmemList(key->ptr,val->ptr);
+    	key->ptr = pmemobj_direct(((struct key_val_pair_PM *)pmemobj_direct(listEntryOid))->key_oid);
+    	val->ptr = pmemobj_direct(((struct key_val_pair_PM *)pmemobj_direct(listEntryOid))->val_oid);
         dbAddPM(db,key,val);
     } else {
         dbOverwritePM(db,key,val);

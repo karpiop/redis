@@ -38,6 +38,8 @@ typedef struct key_val_pair_PM {
     TOID(struct key_val_pair_PM) pmem_list_prev;
 } key_val_pair_PM;
 
+int listEntryConstruct(PMEMobjpool *pop, void *ptr, void *arg);
+int sdsPMConstruct(PMEMobjpool *pop, void *ptr, void *arg);
 int pmemReconstruct(void);
 void pmemKVpairSet(void *key, void *val);
 PMEMoid pmemAddToPmemList(void *key, void *val);

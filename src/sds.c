@@ -211,6 +211,36 @@ sds sdsnewlenPM(const void *init, size_t initlen) {
     return s;
 }
 
+sds sdsnewlenPMAtomic(const void *init, size_t initlen, PMEMoid *oidp) {
+    void *sh;
+    sds s;
+    char type = sdsReqType(initlen);
+    /* Empty strings are usually created in order to append. Use type 8
+     * since type 5 is not good at this. */
+    if (type == SDS_TYPE_5 && initlen == 0) type = SDS_TYPE_8;
+    int hdrlen = sdsHdrSize(type);
+    unsigned char *fp; /* flags pointer. */
+
+    hdrlen += sizeof(PMEMoid);
+
+
+    struct args {
+    		size_t initlen;
+    		const void *init;
+    		int hdrlen;
+    		char type;
+    	} args = { initlen, init, hdrlen, type };
+    int result = pmemobj_alloc(server.pm_pool, oidp, (hdrlen+initlen+1), PM_TYPE_SDS, sdsPMConstruct, &args);
+    printf("Result: %d\n", result);
+
+    /*oid = pmemobj_tx_zalloc((hdrlen+initlen+1),PM_TYPE_SDS);*/
+    sh = pmemobj_direct(*oidp);
+    oidp->off += hdrlen;
+    s = (char*)sh+hdrlen;
+
+    return s;
+}
+
 PMEMoid *sdsPMEMoidBackReference(sds s)
 {
     void *p;
@@ -243,6 +273,11 @@ sds sdsdupPM(const sds s, void **oid_reference) {
     new_sds = sdsnewlenPM(s, sdslen(s));
     *oid_reference = (void *)sdsPMEMoidBackReference(new_sds);
     return new_sds;
+}
+
+/* Duplicate an sds string. */
+sds sdsdupPMAtomic(const sds s, PMEMoid *oidp) {
+    return sdsnewlenPMAtomic(s, sdslen(s), oidp);
 }
 #endif
 

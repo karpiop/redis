@@ -232,7 +232,9 @@ sds sdscpy(sds s, const char *t);
 
 #ifdef USE_NVML
 sds sdsnewlenPM(const void *init, size_t initlen);
+sds sdsnewlenPMAtomic(const void *init, size_t initlen, PMEMoid *oidp);
 sds sdsdupPM(const sds s, void **oid_reference);
+sds sdsdupPMAtomic(const sds s, PMEMoid *oidp);
 void sdsfreePM(sds s);
 PMEMoid *sdsPMEMoidBackReference(sds s);
 #endif
