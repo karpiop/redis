@@ -54,26 +54,26 @@ struct __alloc {
 typedef const struct __alloc *alloc;
 
 static const struct __alloc __z_alloc = {
-		zmalloc,
-		zcalloc,
-		zrealloc,
-		zfree,
-		je_malloc_usable_size, /*zmalloc_size,*/
-		zmalloc_no_tcache,
-		zfree_no_tcache,
-		je_get_defrag_hint
+    zmalloc,
+    zcalloc,
+    zrealloc,
+    zfree,
+    je_malloc_usable_size, /*zmalloc_size,*/
+    zmalloc_no_tcache,
+    zfree_no_tcache,
+    je_get_defrag_hint
 };
 static const struct __alloc *z_alloc = &__z_alloc;
 
 static const struct __alloc __m_alloc = {
-		mmalloc,
-		mcalloc,
-		mrealloc,
-		mfree,
-		mmalloc_usable_size,
-		mmalloc,
-		mfree_no_tcache,
-		mget_defrag_hint
+    mmalloc,
+    mcalloc,
+    mrealloc,
+    mfree,
+    mmalloc_usable_size,
+    mmalloc,
+    mfree_no_tcache,
+    mget_defrag_hint
 };
 static const struct __alloc *m_alloc = &__m_alloc;
 
